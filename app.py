@@ -2,17 +2,14 @@ import streamlit as st
 import joblib
 import numpy as np
 
-# Load model and preprocessing tools
 model = joblib.load('models/heart_model.pkl')
 scaler = joblib.load('models/scaler.pkl')
 label_encoders = joblib.load('models/label_encoders.pkl')
 target_encoder = joblib.load('models/target_encoder.pkl')
 
-# Define input fields
 st.title("🏥 Heart Disease Risk Predictor")
 st.markdown("This tool helps nurses assess if a patient is **at risk** for heart disease based on key clinical indicators.")
 
-# Input form
 with st.form("risk_form"):
     col1, col2 = st.columns(2)
 
@@ -44,9 +41,7 @@ with st.form("risk_form"):
 
     submitted = st.form_submit_button("Predict Risk")
 
-# Run prediction
 if submitted:
-    # Collect inputs in same order as training
     input_dict = {
         'BMI': BMI,
         'PhysicalHealth': PhysicalHealth,
@@ -70,21 +65,16 @@ if submitted:
     numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
     categorical_cols = [col for col in input_dict if col not in numerical_cols]
 
-    # Encode categorical values
     for col in categorical_cols:
         encoder = label_encoders[col]
         input_dict[col] = encoder.transform([input_dict[col]])[0]
 
-    # Prepare feature array in training column order
     input_array = np.array([[input_dict[col] for col in model.feature_names_in_]])
 
-    # Get numerical column indices (like in train.py)
     numerical_indices = [list(model.feature_names_in_).index(col) for col in numerical_cols]
 
-    # Scale only the numerical features
     input_array[:, numerical_indices] = scaler.transform(input_array[:, numerical_indices])
 
-    # Predict
     prediction = model.predict(input_array)[0]
     probability = model.predict_proba(input_array)[0][1] 
 

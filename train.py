@@ -56,56 +56,10 @@ y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
 
 try:
     os.makedirs("models", exist_ok=True)
-    joblib.dump(model, 'models/heart_model.1.pkl')
-    joblib.dump(scaler, 'models/scaler.1.pkl')
-    joblib.dump(label_encoders, 'models/label_encoders.1.pkl')
-    joblib.dump(target_encoder, 'models/target_encoder.1.pkl')
+    joblib.dump(model, 'models/heart_model.pkl')
+    joblib.dump(scaler, 'models/scaler.pkl')
+    joblib.dump(label_encoders, 'models/label_encoders.pkl')
+    joblib.dump(target_encoder, 'models/target_encoder.pkl')
     print("Model successfuly dumped!")
 except Exception as e:
     print("Error occured: ", e)
-    
-# 🧪 Test a "positive" (at-risk) sample
-print("\n--- Test Prediction for At-Risk Patient ---")
-
-# Define a mock at-risk patient (realistic values)
-test_input = {
-    'BMI': 38.5,
-    'PhysicalHealth': 20,
-    'MentalHealth': 15,
-    'SleepTime': 4,
-    'Smoking': 'Yes',
-    'AlcoholDrinking': 'No',
-    'Stroke': 'Yes',
-    'DiffWalking': 'Yes',
-    'Sex': 'Male',
-    'AgeCategory': '75-79',
-    'Race': 'White',
-    'Diabetic': 'Yes',
-    'PhysicalActivity': 'No',
-    'GenHealth': 'Poor',
-    'Asthma': 'Yes',
-    'KidneyDisease': 'Yes',
-    'SkinCancer': 'No'
-}
-
-# Encode categorical features
-for col in test_input:
-    if col in label_encoders:
-        test_input[col] = label_encoders[col].transform([test_input[col]])[0]
-
-# Create input array in correct order
-input_array = np.array([[test_input[col] for col in X.columns]])
-
-# Scale numerical columns
-input_array[:, numerical_indices] = scaler.transform(input_array[:, numerical_indices])
-
-# Predict
-prediction = model.predict(input_array)[0]
-probability = model.predict_proba(input_array)[0][1]
-
-# Decode the prediction
-result_label = target_encoder.inverse_transform([prediction])[0]
-
-# Print result
-print(f"Predicted Class: {result_label}")
-print(f"Confidence Score: {probability:.2%}")

@@ -31,7 +31,9 @@ with st.form("risk_form"):
                                      'Hispanic', 'Other'])
 
     with col2:
-        Smoking = st.selectbox("Smoking", ['Yes', 'No'])
+        smoking_options = {"Yes": "yes", "No": "no"}
+        smoking_choice = st.selectbox("Smoking", options=list(smoking_options.keys()))
+        Smoking = smoking_options[smoking_choice]
         AlcoholDrinking = st.selectbox("Alcohol Drinking", ['Yes', 'No'])
         Stroke = st.selectbox("Stroke History", ['Yes', 'No'])
         DiffWalking = st.selectbox("Difficulty Walking", ['Yes', 'No'])

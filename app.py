@@ -3,10 +3,10 @@ import joblib
 import numpy as np
 
 # Load model and preprocessing tools
-model = joblib.load('models/heart_model.1.pkl')
-scaler = joblib.load('models/scaler.1.pkl')
-label_encoders = joblib.load('models/label_encoders.1.pkl')
-target_encoder = joblib.load('models/target_encoder.1.pkl')
+model = joblib.load('models/heart_model.pkl')
+scaler = joblib.load('models/scaler.pkl')
+label_encoders = joblib.load('models/label_encoders.pkl')
+target_encoder = joblib.load('models/target_encoder.pkl')
 
 # Define input fields
 st.title("🏥 Heart Disease Risk Predictor")
@@ -67,7 +67,6 @@ if submitted:
         'SkinCancer': SkinCancer
     }
 
-    # Separate numerical and categorical inputs
     numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
     categorical_cols = [col for col in input_dict if col not in numerical_cols]
 
@@ -76,9 +75,14 @@ if submitted:
         encoder = label_encoders[col]
         input_dict[col] = encoder.transform([input_dict[col]])[0]
 
-    # Prepare feature array
-    input_array = np.array([[input_dict[col] for col in input_dict]])
-    input_array[:, [0,1,2,3]] = scaler.transform(input_array[:, [0,1,2,3]])
+    # Prepare feature array in training column order
+    input_array = np.array([[input_dict[col] for col in model.feature_names_in_]])
+
+    # Get numerical column indices (like in train.py)
+    numerical_indices = [list(model.feature_names_in_).index(col) for col in numerical_cols]
+
+    # Scale only the numerical features
+    input_array[:, numerical_indices] = scaler.transform(input_array[:, numerical_indices])
 
     # Predict
     prediction = model.predict(input_array)[0]

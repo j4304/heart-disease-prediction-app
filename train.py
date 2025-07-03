@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import GradientBoostingClassifier
@@ -6,6 +7,13 @@ import joblib
 import os
 
 df = pd.read_csv("dataset/heart_2020_uncleaned.csv")
+
+binary_cols = ['Smoking', 'AlcoholDrinking', 'Stroke', 'DiffWalking', 'PhysicalActivity',
+               'Asthma', 'KidneyDisease', 'SkinCancer']
+
+for col in binary_cols:
+    if col in df.columns:
+        df[col] = df[col].str.strip().str.lower().replace({'yes': 'Yes', 'no': 'No'})
 
 numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
 for col in numerical_cols:

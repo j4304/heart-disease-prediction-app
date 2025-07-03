@@ -1,6 +1,1 @@
 venv
-!models/
-!models/heart_model.pkl
-!models/scaler.pkl
-!models/label_encoders.pkl
-!models/target_encoder.pkl

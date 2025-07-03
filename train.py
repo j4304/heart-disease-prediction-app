@@ -1,111 +1,109 @@
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.ensemble import GradientBoostingClassifier
+import streamlit as st
 import joblib
-import os
+import numpy as np
 
-df = pd.read_csv("dataset/heart_2020_uncleaned.csv")
+# Load model and preprocessing tools
+model = joblib.load('models/heart_model.pkl')
+scaler = joblib.load('models/scaler.pkl')
+label_encoders = joblib.load('models/label_encoders.pkl')
+target_encoder = joblib.load('models/target_encoder.pkl')
 
-df["Smoking"] = df["Smoking"].str.strip().str.lower().replace({'yes': 'Yes', 'no': 'No'})
+# Define input fields
+st.title("🏥 Heart Disease Risk Predictor")
+st.markdown("This tool helps nurses assess if a patient is **at risk** for heart disease based on key clinical indicators.")
 
-numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
-for col in numerical_cols:
-    if df[col].isnull().any():
-        median_value = df[col].median()
-        df.fillna({col: median_value}, inplace=True)
+# Input form
+with st.form("risk_form"):
+    col1, col2 = st.columns(2)
 
-categorical_cols = df.select_dtypes(include=['object']).columns
-for col in categorical_cols:
-    if df[col].isnull().any():
-        mode_value = df[col].mode()[0]
-        df.fillna({col: mode_value}, inplace=True)
+    with col1:
+        BMI = st.number_input("BMI", min_value=10.0, max_value=60.0, value=25.0)
+        PhysicalHealth = st.slider("Physical Health (days affected in past 30)", 0, 30, 5)
+        MentalHealth = st.slider("Mental Health (days affected in past 30)", 0, 30, 5)
+        SleepTime = st.number_input("Sleep Time (hours per day)", min_value=0.0, max_value=24.0, value=7.0)
+        Sex = st.selectbox("Sex", ['Male', 'Female'])
+        AgeCategory = st.selectbox("Age Category", [
+            '18-24', '25-29', '30-34', '35-39', '40-44',
+            '45-49', '50-54', '55-59', '60-64', '65-69',
+            '70-74', '75-79', '80 or older'
+        ])
+        Race = st.selectbox("Race", ['White', 'Black', 'Asian', 'American Indian/Alaskan Native', 
+                                     'Hispanic', 'Other'])
 
-label_encoders = {}
-categorical_features = ['Smoking', 'AlcoholDrinking', 'Stroke', 'DiffWalking', 'Sex', 
-                       'AgeCategory', 'Race', 'Diabetic', 'PhysicalActivity', 'GenHealth',
-                       'Asthma', 'KidneyDisease', 'SkinCancer']
+    with col2:
+        Smoking = st.selectbox("Smoking", ['Yes', 'No'])
+        AlcoholDrinking = st.selectbox("Alcohol Drinking", ['Yes', 'No'])
+        Stroke = st.selectbox("Stroke History", ['Yes', 'No'])
+        DiffWalking = st.selectbox("Difficulty Walking", ['Yes', 'No'])
+        Diabetic = st.selectbox("Diabetic", ['Yes', 'No', 'No, borderline diabetes', 'Yes (during pregnancy)'])
+        PhysicalActivity = st.selectbox("Physical Activity", ['Yes', 'No'])
+        GenHealth = st.selectbox("General Health", ['Excellent', 'Very good', 'Good', 'Fair', 'Poor'])
+        Asthma = st.selectbox("Asthma", ['Yes', 'No'])
+        KidneyDisease = st.selectbox("Kidney Disease", ['Yes', 'No'])
+        SkinCancer = st.selectbox("Skin Cancer", ['Yes', 'No'])
 
-for feature in categorical_features:
-    le = LabelEncoder()
-    df[feature] = le.fit_transform(df[feature])
-    label_encoders[feature] = le
+    submitted = st.form_submit_button("Predict Risk")
 
-target_encoder = LabelEncoder()
-df['HeartDisease'] = target_encoder.fit_transform(df['HeartDisease'])
+# Run prediction
+if submitted:
+    # Collect inputs in same order as training
+    input_dict = {
+        'BMI': BMI,
+        'PhysicalHealth': PhysicalHealth,
+        'MentalHealth': MentalHealth,
+        'SleepTime': SleepTime,
+        'Smoking': Smoking,
+        'AlcoholDrinking': AlcoholDrinking,
+        'Stroke': Stroke,
+        'DiffWalking': DiffWalking,
+        'Sex': Sex,
+        'AgeCategory': AgeCategory,
+        'Race': Race,
+        'Diabetic': Diabetic,
+        'PhysicalActivity': PhysicalActivity,
+        'GenHealth': GenHealth,
+        'Asthma': Asthma,
+        'KidneyDisease': KidneyDisease,
+        'SkinCancer': SkinCancer
+    }
 
-X = df.drop('HeartDisease', axis=1)
-y = df['HeartDisease']
+    # Separate numerical and categorical inputs
+    numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
+    categorical_cols = [col for col in input_dict if col not in numerical_cols]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    # Normalize string values (important for matching label encoders)
+    for col in categorical_cols:
+        val = input_dict[col]
+        if isinstance(val, str):
+            val = val.strip()
+            # Auto-capitalize first letter of each word (e.g., yes → Yes, very good → Very good)
+            val = ' '.join(word.capitalize() for word in val.split())
+        input_dict[col] = val
 
-scaler = StandardScaler()
-X_train_scaled = X_train.copy()
-X_test_scaled = X_test.copy()
+    # Encode categorical values safely
+    try:
+        for col in categorical_cols:
+            encoder = label_encoders[col]
+            input_dict[col] = encoder.transform([input_dict[col]])[0]
+    except ValueError as e:
+        st.error(f"⚠️ Invalid input for {col}: {val}. Please check your input values.")
+        st.stop()
 
-numerical_indices = [X.columns.get_loc(col) for col in numerical_cols]
-X_train_scaled.iloc[:, numerical_indices] = scaler.fit_transform(X_train.iloc[:, numerical_indices])
-X_test_scaled.iloc[:, numerical_indices] = scaler.transform(X_test.iloc[:, numerical_indices])
+    # Prepare feature array in correct order
+    input_array = np.array([[input_dict[col] for col in input_dict]])
+    input_array[:, [0, 1, 2, 3]] = scaler.transform(input_array[:, [0, 1, 2, 3]])
 
-model = GradientBoostingClassifier(n_estimators=100, random_state=42)
-model.fit(X_train_scaled, y_train)
+    # Predict
+    prediction = model.predict(input_array)[0]
+    probability = model.predict_proba(input_array)[0][1]
 
-y_pred = model.predict(X_test_scaled)
-y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
+    result = target_encoder.inverse_transform([prediction])[0]
 
-try:
-    os.makedirs("models", exist_ok=True)
-    joblib.dump(model, 'models/heart_model.pkl')
-    joblib.dump(scaler, 'models/scaler.pkl')
-    joblib.dump(label_encoders, 'models/label_encoders.pkl')
-    joblib.dump(target_encoder, 'models/target_encoder.pkl')
-    print("Model successfuly dumped!")
-except Exception as e:
-    print("Error occured: ", e)
-    
-# 🧪 Test a "positive" (at-risk) sample
-print("\n--- Test Prediction for At-Risk Patient ---")
+    # Display results
+    st.subheader("🩺 Prediction Result")
+    if result == 'Yes':
+        st.error("⚠️ The patient is **At Risk** of heart disease.")
+    else:
+        st.success("✅ The patient is **Not at Risk** of heart disease.")
 
-# Define a mock at-risk patient (realistic values)
-test_input = {
-    'BMI': 38.5,
-    'PhysicalHealth': 20,
-    'MentalHealth': 15,
-    'SleepTime': 4,
-    'Smoking': 'Yes',
-    'AlcoholDrinking': 'No',
-    'Stroke': 'Yes',
-    'DiffWalking': 'Yes',
-    'Sex': 'Male',
-    'AgeCategory': '75-79',
-    'Race': 'White',
-    'Diabetic': 'Yes',
-    'PhysicalActivity': 'No',
-    'GenHealth': 'Poor',
-    'Asthma': 'Yes',
-    'KidneyDisease': 'Yes',
-    'SkinCancer': 'No'
-}
-
-# Encode categorical features
-for col in test_input:
-    if col in label_encoders:
-        test_input[col] = label_encoders[col].transform([test_input[col]])[0]
-
-# Create input array in correct order
-input_array = np.array([[test_input[col] for col in X.columns]])
-
-# Scale numerical columns
-input_array[:, numerical_indices] = scaler.transform(input_array[:, numerical_indices])
-
-# Predict
-prediction = model.predict(input_array)[0]
-probability = model.predict_proba(input_array)[0][1]
-
-# Decode the prediction
-result_label = target_encoder.inverse_transform([prediction])[0]
-
-# Print result
-print(f"Predicted Class: {result_label}")
-print(f"Confidence Score: {probability:.2%}")
+    st.info(f"💡 Confidence Score: **{probability:.2%}** for being at risk.")

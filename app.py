@@ -3,10 +3,10 @@ import joblib
 import numpy as np
 
 # Load model and preprocessing tools
-model = joblib.load('model/heart_model.pkl')
-scaler = joblib.load('model/scaler.pkl')
-label_encoders = joblib.load('model/label_encoders.pkl')
-target_encoder = joblib.load('model/target_encoder.pkl')
+model = joblib.load('models/heart_model.pkl')
+scaler = joblib.load('models/scaler.pkl')
+label_encoders = joblib.load('models/label_encoders.pkl')
+target_encoder = joblib.load('models/target_encoder.pkl')
 
 # Define input fields
 st.title("🏥 Heart Disease Risk Predictor")

@@ -8,12 +8,7 @@ import os
 
 df = pd.read_csv("dataset/heart_2020_uncleaned.csv")
 
-binary_cols = ['Smoking', 'AlcoholDrinking', 'Stroke', 'DiffWalking', 'PhysicalActivity',
-               'Asthma', 'KidneyDisease', 'SkinCancer']
-
-for col in binary_cols:
-    if col in df.columns:
-        df[col] = df[col].str.strip().str.lower().replace({'yes': 'Yes', 'no': 'No'})
+df["Smoking"] = df["Smoking"].str.strip().str.lower().replace({'yes': 'Yes', 'no': 'No'})
 
 numerical_cols = ['BMI', 'PhysicalHealth', 'MentalHealth', 'SleepTime']
 for col in numerical_cols:
@@ -69,3 +64,48 @@ try:
 except Exception as e:
     print("Error occured: ", e)
     
+# 🧪 Test a "positive" (at-risk) sample
+print("\n--- Test Prediction for At-Risk Patient ---")
+
+# Define a mock at-risk patient (realistic values)
+test_input = {
+    'BMI': 38.5,
+    'PhysicalHealth': 20,
+    'MentalHealth': 15,
+    'SleepTime': 4,
+    'Smoking': 'Yes',
+    'AlcoholDrinking': 'No',
+    'Stroke': 'Yes',
+    'DiffWalking': 'Yes',
+    'Sex': 'Male',
+    'AgeCategory': '75-79',
+    'Race': 'White',
+    'Diabetic': 'Yes',
+    'PhysicalActivity': 'No',
+    'GenHealth': 'Poor',
+    'Asthma': 'Yes',
+    'KidneyDisease': 'Yes',
+    'SkinCancer': 'No'
+}
+
+# Encode categorical features
+for col in test_input:
+    if col in label_encoders:
+        test_input[col] = label_encoders[col].transform([test_input[col]])[0]
+
+# Create input array in correct order
+input_array = np.array([[test_input[col] for col in X.columns]])
+
+# Scale numerical columns
+input_array[:, numerical_indices] = scaler.transform(input_array[:, numerical_indices])
+
+# Predict
+prediction = model.predict(input_array)[0]
+probability = model.predict_proba(input_array)[0][1]
+
+# Decode the prediction
+result_label = target_encoder.inverse_transform([prediction])[0]
+
+# Print result
+print(f"Predicted Class: {result_label}")
+print(f"Confidence Score: {probability:.2%}")
